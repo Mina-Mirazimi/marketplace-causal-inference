@@ -1,0 +1,7 @@
+metric,value
+rows,26000.0
+properties,500.0
+ever_treated_share,0.598
+naive_booking_difference,5.352382290090993
+twfe_log_effect,0.14366726079949593
+twfe_approx_pct_effect,15.44998972345919
