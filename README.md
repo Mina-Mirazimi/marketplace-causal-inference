@@ -1,121 +1,321 @@
 # Marketplace Causal Inference
 
-**Estimating the Incremental Effect of Sponsored Advertising in a Two-Sided Marketplace**
+### Measuring the Incremental Impact of Sponsored Advertising in a Two-Sided Marketplace
 
-This project demonstrates how an economist/data scientist can evaluate whether a marketplace advertising program *causes* higher bookings and revenue when participation is voluntary and treatment timing is endogenous.
+This project demonstrates an end-to-end causal inference workflow for evaluating a sponsored advertising program in a two-sided marketplace.
 
-## Business question
+The central business question is simple:
 
-A marketplace offers suppliers (for example, hotels, hosts, or merchants) a sponsored-advertising program that can increase visibility. Management observes that advertisers have higher bookings, but that comparison is not causal: high-demand or fast-growing suppliers may be more likely to start advertising.
+> **Does sponsored advertising actually cause incremental bookings and revenue, or do advertisers simply perform better because stronger suppliers are more likely to advertise?**
 
-The core decision is:
+The project uses a synthetic marketplace panel with endogenous and staggered advertising adoption to illustrate how causal inference can turn observational marketplace data into actionable business decisions.
 
-> **Does sponsored advertising create incremental bookings and revenue, for whom, and when is the program economically worthwhile?**
+---
 
-## Why naive analysis can fail
+## Business Problem
 
-Suppliers self-select into advertising. In the simulated data, adoption probability depends on recent demand, baseline quality, and marketplace visibility. This creates selection bias.
+Suppose a marketplace allows suppliers—such as hotels, hosts, or merchants—to purchase sponsored placement.
 
-A simple comparison of treated and untreated suppliers can therefore overstate or understate the true incremental effect.
+A simple comparison might show that advertisers receive more bookings than non-advertisers.
 
-## Empirical strategy
+But this does **not** imply that advertising caused those additional bookings.
 
-The project compares several approaches:
+Suppliers choose whether and when to advertise. Adoption may depend on:
 
-1. **Naive cross-sectional comparison**
-2. **Two-way fixed effects (TWFE)** with supplier and week fixed effects
-3. **Event-study estimates** around treatment adoption
-4. **Cohort-aware dynamic effects** using treatment timing
-5. **Heterogeneous treatment effects** by baseline visibility
-6. **Robustness checks** for pre-trends and alternative outcome definitions
+- recent demand trends,
+- supplier quality,
+- baseline marketplace visibility,
+- expected future performance.
 
-The simulated data include a known data-generating process, so estimated effects can be compared with the true causal effect.
+This creates **selection bias and treatment endogeneity**.
 
-## Dataset
+The decision problem is therefore not:
 
-Synthetic weekly panel data contain:
+> Do advertisers have more bookings?
 
-- supplier/property ID
+It is:
+
+> **How many bookings would these same suppliers have received if they had not advertised?**
+
+That counterfactual is the focus of this project.
+
+---
+
+## Data
+
+The analysis uses a fully synthetic weekly marketplace panel designed to reproduce realistic challenges in observational marketplace measurement.
+
+### Sample
+
+- **500 suppliers**
+- **52 weeks**
+- **26,000 property-week observations**
+- Approximately **59.8%** of suppliers eventually adopt sponsored advertising
+- Treatment adoption occurs at different times across suppliers
+
+The simulated data include:
+
+- supplier ID
 - week
-- treatment status
-- treatment adoption week
+- advertising status
+- adoption week
 - impressions
 - clicks
 - bookings
 - revenue
+- supplier quality
 - baseline visibility
-- quality score
-- market demand index
 - recent demand growth
-- true treatment effect
+- true simulated treatment effect
 
-The default generator creates thousands of suppliers observed for one year.
+Because the data-generating process is known, estimated causal effects can also be compared with the underlying simulated effect.
 
-## Repository structure
+---
+
+## Why Naive Measurement Fails
+
+In the synthetic marketplace, advertising adoption is intentionally endogenous.
+
+Suppliers with different quality, visibility, and recent demand trajectories have different probabilities of entering the advertising program.
+
+A raw comparison shows that treated supplier-weeks have approximately **22% more bookings** than untreated supplier-weeks.
+
+However, this difference combines:
+
+1. the causal effect of advertising, and
+2. pre-existing differences between suppliers that choose to advertise and those that do not.
+
+Using the raw 22% difference as the incremental impact of advertising would therefore overstate the program's causal contribution.
+
+---
+
+## Identification Strategy
+
+The analysis uses panel variation in treatment timing to separate advertising effects from persistent supplier differences and common marketplace shocks.
+
+The baseline specification is:
+
+\[
+\log(1 + Bookings_{it})
+=
+\alpha_i
++
+\gamma_t
++
+\beta Advertising_{it}
++
+\epsilon_{it}
+\]
+
+where:
+
+- \( \alpha_i \) = supplier fixed effects
+- \( \gamma_t \) = week fixed effects
+- \( Advertising_{it} \) = treatment status
+- \( \beta \) = estimated incremental effect of advertising
+
+Standard errors are clustered at the supplier level.
+
+The project then extends the analysis using an **event-study design** to examine treatment dynamics and pre-treatment trends.
+
+---
+
+## Main Result
+
+The naive treated-versus-untreated comparison suggests approximately:
+
+**22% higher bookings**
+
+for treated observations.
+
+After controlling for supplier and week fixed effects, the estimated incremental effect is approximately:
+
+### **15.45% increase in bookings**
+
+This distinction is economically important.
+
+The raw performance gap would attribute both selection and causal impact to the advertising program. The causal model produces a more defensible estimate of incrementality.
+
+---
+
+## Event Study
+
+The event study examines booking behavior before and after advertising adoption.
+
+![Event Study](results/event_study.png)
+
+The estimates show relatively limited pre-treatment differences followed by a clear post-adoption increase in bookings.
+
+The treatment effect builds over the first several weeks and then stabilizes, consistent with a gradual advertising exposure response.
+
+Selected dynamic estimates:
+
+| Week Relative to Adoption | Log Booking Effect |
+|---:|---:|
+| -6 | -0.005 |
+| -4 | -0.017 |
+| -2 | -0.042 |
+| 0 | 0.022 |
+| +2 | 0.081 |
+| +4 | 0.140 |
+| +8 | 0.153 |
+| +12 | 0.150 |
+
+The dynamic pattern provides information that a single average treatment effect cannot: **when the effect appears and whether it persists.**
+
+---
+
+## Heterogeneous Treatment Effects
+
+Average treatment effects can hide economically meaningful differences across suppliers.
+
+The project therefore examines treatment effects by baseline marketplace visibility.
+
+This addresses a practical product question:
+
+> **Should sponsored advertising be promoted broadly, or targeted toward suppliers for whom additional exposure creates the greatest incremental value?**
+
+The results suggest meaningful heterogeneity across visibility segments, reinforcing the importance of targeting rather than relying only on an overall average effect.
+
+---
+
+## Business Recommendation
+
+The analysis supports three conclusions.
+
+**1. Do not evaluate advertising using treated-versus-untreated averages.**
+
+Supplier self-selection creates substantial bias in naive marketplace comparisons.
+
+**2. Sponsored advertising appears to generate meaningful incremental bookings.**
+
+The fixed-effects estimate implies an average booking increase of approximately **15.5%**, substantially below the raw 22% performance difference but still economically meaningful.
+
+**3. Optimize the program using heterogeneous incrementality.**
+
+Rather than maximizing advertising enrollment alone, the marketplace should identify suppliers whose bookings are most responsive to incremental visibility.
+
+This shifts the business objective from:
+
+**Who is most likely to advertise?**
+
+to:
+
+**For whom does advertising create the most incremental marketplace value?**
+
+---
+
+## Methods Demonstrated
+
+### Causal Inference
+
+- Panel data methods
+- Two-way fixed effects
+- Event-study estimation
+- Staggered treatment adoption
+- Pre-trend diagnostics
+- Heterogeneous treatment effects
+- Clustered standard errors
+- Counterfactual reasoning
+
+### Data Science
+
+- Python
+- pandas
+- NumPy
+- statsmodels
+- matplotlib
+- reproducible synthetic data generation
+
+### Analytics Engineering
+
+- SQL marketplace metrics
+- modular Python code
+- automated tests
+- reproducible model outputs
+- version-controlled analysis
+
+### Business Analytics
+
+- marketplace incrementality
+- advertising effectiveness
+- supplier segmentation
+- targeting strategy
+- translating econometric estimates into product decisions
+
+---
+
+## Repository Structure
 
 ```text
 marketplace-causal-inference/
 │
 ├── README.md
 ├── requirements.txt
+│
 ├── src/
 │   ├── generate_data.py
 │   ├── analysis.py
 │   └── plotting.py
-├── sql/
-│   └── marketplace_metrics.sql
+│
 ├── notebooks/
 │   └── marketplace_causal_analysis.ipynb
+│
+├── sql/
+│   └── marketplace_metrics.sql
+│
 ├── tests/
 │   └── test_data_generation.py
-├── data/
+│
 └── results/
+    ├── event_study.png
+    ├── event_study.csv
+    ├── heterogeneous_effects.csv
+    └── model_summary.csv
 ```
 
-## Quick start
+---
+
+## Reproducing the Analysis
+
+Clone the repository and install the required packages:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+```
 
+Generate the synthetic marketplace panel:
+
+```bash
 python src/generate_data.py
+```
+
+Run the causal analysis:
+
+```bash
 python src/analysis.py
 ```
 
-The scripts write the synthetic panel to `data/marketplace_panel.csv` and model outputs to `results/`.
+Generate the event-study visualization:
 
-## Key modeling idea
+```bash
+python src/plotting.py
+```
 
-For supplier \(i\) in week \(t\):
+---
 
-\[
-Y_{it} = \alpha_i + \gamma_t + \tau_{it}D_{it} + \epsilon_{it}
-\]
+## Key Takeaway
 
-where \(D_{it}\) is advertising participation. Treatment adoption is intentionally endogenous in the simulation, so identification requires exploiting within-supplier changes over time and checking pre-treatment dynamics.
+**Correlation measures who performs better. Causal inference measures what the marketplace actually caused.**
 
-## Business interpretation
+In marketplace settings with voluntary program adoption, that distinction can materially change product strategy, targeting decisions, and estimates of incremental value.
 
-The analysis is designed to answer more than whether an estimate is statistically significant. It asks:
+---
 
-- Is the effect economically meaningful?
-- Does it persist after adoption?
-- Is it concentrated among low-visibility suppliers?
-- Are pre-trends consistent with the identifying assumptions?
-- Would broad enrollment or targeted enrollment create more value?
+## About This Project
 
-The intended output is a recommendation such as:
+This is an independent portfolio project using **fully synthetic data**.
 
-> Sponsored advertising generates positive incremental bookings on average, but gains are concentrated among suppliers with low baseline visibility. A targeted program can therefore create more incremental value than broad enrollment.
+It does not contain proprietary, confidential, or company-specific data.
 
-## Skills demonstrated
-
-**Causal inference:** panel data, fixed effects, event studies, staggered adoption, pre-trend diagnostics, heterogeneous treatment effects  
-**Data science:** Python, pandas, NumPy, statsmodels, reproducible analysis  
-**Analytics engineering:** SQL metrics, modular code, tests, versionable outputs  
-**Business translation:** incrementality, targeting, marketplace economics, decision-oriented reporting
-
-## Important note
-
-This is a portfolio project using fully synthetic data. It does not use proprietary or confidential data from any company.
+The project was designed to demonstrate how econometric and causal inference methods can be applied to real-world marketplace and product decisions.
