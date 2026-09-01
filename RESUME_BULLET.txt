@@ -1,0 +1,2 @@
+Marketplace Causal Inference | Python, SQL, Econometrics
+Built an end-to-end causal measurement project for a simulated two-sided marketplace with endogenous advertising adoption. Implemented panel fixed effects, event-study diagnostics, heterogeneous treatment-effect analysis, reproducible data generation, SQL business metrics, and decision-focused reporting to estimate incremental bookings and identify high-value supplier segments.
