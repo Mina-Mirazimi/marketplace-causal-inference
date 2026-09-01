@@ -4,7 +4,7 @@ import pandas as pd
 
 RNG_SEED = 42
 
-def generate_marketplace_panel(n_properties=3000, n_weeks=52, seed=RNG_SEED):
+def generate_marketplace_panel(n_properties=500, n_weeks=52, seed=RNG_SEED):
     rng = np.random.default_rng(seed)
 
     property_id = np.arange(n_properties)
@@ -28,7 +28,7 @@ def generate_marketplace_panel(n_properties=3000, n_weeks=52, seed=RNG_SEED):
         # higher quality, and lower baseline visibility are more likely to adopt.
         eligible = ~adopted
         logit = (
-            -4.0
+            -5.4
             + 1.1 * quality
             - 0.9 * baseline_visibility
             + 1.4 * latent_growth
@@ -88,7 +88,20 @@ def generate_marketplace_panel(n_properties=3000, n_weeks=52, seed=RNG_SEED):
                 "true_booking_lift_pct": float(true_booking_lift[i] * 100),
             })
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+
+    # Backfill each eventual adopter's first treatment week across its full history.
+    # This is essential for valid pre-treatment event-time diagnostics.
+    first_treat = (
+        df.loc[df["treated"] == 1]
+        .groupby("property_id")["week"]
+        .min()
+    )
+    df["adoption_week"] = df["property_id"].map(first_treat)
+    df["event_time"] = df["week"] - df["adoption_week"]
+    df.loc[df["adoption_week"].isna(), "event_time"] = np.nan
+
+    return df
 
 
 if __name__ == "__main__":
